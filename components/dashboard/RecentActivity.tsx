@@ -23,22 +23,22 @@ type RequestStatus =
   | "completed"
   | "rejected";
 
-interface Activity {
+export interface ActivityItem {
   id: string;
   title: string;
-  department: string;
+  organization: string;
   amount: number;
   status: RequestStatus;
   statusLabel: string;
   date: string;
 }
 
-// ダミーデータ
-const activities: Activity[] = [
+// ダミーデータ（propsが渡されない場合のフォールバック）
+const fallbackActivities: ActivityItem[] = [
   {
     id: "REQ-2024-012",
     title: "文化祭備品購入",
-    department: "生徒会",
+    organization: "生徒会",
     amount: 45000,
     status: "pending_kyoto",
     statusLabel: "教頭 承認待ち",
@@ -47,7 +47,7 @@ const activities: Activity[] = [
   {
     id: "REQ-2024-011",
     title: "理科実験器具の補充",
-    department: "理科",
+    organization: "理科",
     amount: 32000,
     status: "approved",
     statusLabel: "全承認完了",
@@ -56,7 +56,7 @@ const activities: Activity[] = [
   {
     id: "REQ-2024-010",
     title: "体育祭用テント修繕費",
-    department: "体育科",
+    organization: "体育科",
     amount: 28000,
     status: "completed",
     statusLabel: "出納済",
@@ -65,7 +65,7 @@ const activities: Activity[] = [
   {
     id: "REQ-2024-009",
     title: "図書室 新刊購入",
-    department: "図書委員会",
+    organization: "図書委員会",
     amount: 15000,
     status: "ready_for_payment",
     statusLabel: "受取待ち",
@@ -74,20 +74,11 @@ const activities: Activity[] = [
   {
     id: "REQ-2024-008",
     title: "放送機器メンテナンス",
-    department: "放送部",
+    organization: "放送部",
     amount: 50000,
     status: "rejected",
     statusLabel: "却下",
     date: "2024-11-05",
-  },
-  {
-    id: "REQ-2024-007",
-    title: "美術部 画材購入",
-    department: "美術部",
-    amount: 12000,
-    status: "draft",
-    statusLabel: "下書き",
-    date: "2024-11-03",
   },
 ];
 
@@ -125,19 +116,31 @@ function getStatusStyle(status: RequestStatus): {
   );
 }
 
-export default function RecentActivity() {
+export default function RecentActivity({
+  activities,
+}: {
+  activities?: ActivityItem[];
+}) {
+  const data = activities ?? fallbackActivities;
+
   return (
     <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
         <h2 className="text-sm font-semibold text-gray-900">最近の申請</h2>
-        <button className="text-xs font-medium text-blue-600 transition-colors hover:text-blue-700">
-          すべて見る →
-        </button>
+        <span className="text-xs text-gray-400">{data.length}件</span>
       </div>
+
+      {data.length === 0 && (
+        <div className="px-6 py-12 text-center">
+          <p className="text-sm text-gray-400">
+            該当する申請データがありません。
+          </p>
+        </div>
+      )}
 
       {/* モバイル: カードレイアウト */}
       <div className="divide-y divide-gray-100 sm:hidden">
-        {activities.map((activity) => {
+        {data.map((activity) => {
           const style = getStatusStyle(activity.status);
           const Icon = style.icon;
           return (
@@ -152,7 +155,7 @@ export default function RecentActivity() {
                     {activity.title}
                   </p>
                   <p className="mt-0.5 text-xs text-gray-500">
-                    {activity.department} ・ {activity.date}
+                    {activity.organization} ・ {activity.date}
                   </p>
                 </div>
                 <p className="shrink-0 text-sm font-semibold text-gray-900">
@@ -174,66 +177,68 @@ export default function RecentActivity() {
       </div>
 
       {/* デスクトップ: テーブルレイアウト */}
-      <div className="hidden sm:block">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
-              <th className="px-6 py-3 font-medium">申請番号</th>
-              <th className="px-6 py-3 font-medium">件名</th>
-              <th className="px-6 py-3 font-medium">所属</th>
-              <th className="px-6 py-3 text-right font-medium">金額</th>
-              <th className="px-6 py-3 font-medium">ステータス</th>
-              <th className="px-6 py-3 font-medium">日付</th>
-              <th className="px-6 py-3 font-medium" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {activities.map((activity) => {
-              const style = getStatusStyle(activity.status);
-              const Icon = style.icon;
-              return (
-                <tr
-                  key={activity.id}
-                  className="group transition-colors hover:bg-gray-50/50"
-                >
-                  <td className="px-6 py-3.5 text-xs text-gray-400">
-                    {activity.id}
-                  </td>
-                  <td className="px-6 py-3.5 text-sm font-medium text-gray-900">
-                    {activity.title}
-                  </td>
-                  <td className="px-6 py-3.5 text-sm text-gray-600">
-                    {activity.department}
-                  </td>
-                  <td className="px-6 py-3.5 text-right text-sm font-semibold text-gray-900">
-                    ¥{activity.amount.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-3.5">
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${style.bg} ${style.text}`}
-                    >
-                      <Icon className="h-3 w-3" />
-                      {activity.statusLabel}
-                    </span>
-                  </td>
-                  <td className="px-6 py-3.5 text-sm text-gray-500">
-                    {activity.date}
-                  </td>
-                  <td className="px-6 py-3.5">
-                    <Link
-                      href={`/requests/${activity.id}`}
-                      className="inline-flex items-center gap-1 text-xs text-blue-600 opacity-0 transition-opacity group-hover:opacity-100"
-                    >
-                      詳細
-                      <ExternalLink className="h-3 w-3" />
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {data.length > 0 && (
+        <div className="hidden sm:block">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
+                <th className="px-6 py-3 font-medium">申請番号</th>
+                <th className="px-6 py-3 font-medium">件名</th>
+                <th className="px-6 py-3 font-medium">申請団体</th>
+                <th className="px-6 py-3 text-right font-medium">金額</th>
+                <th className="px-6 py-3 font-medium">ステータス</th>
+                <th className="px-6 py-3 font-medium">日付</th>
+                <th className="px-6 py-3 font-medium" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {data.map((activity) => {
+                const style = getStatusStyle(activity.status);
+                const Icon = style.icon;
+                return (
+                  <tr
+                    key={activity.id}
+                    className="group transition-colors hover:bg-gray-50/50"
+                  >
+                    <td className="px-6 py-3.5 text-xs text-gray-400">
+                      {activity.id}
+                    </td>
+                    <td className="px-6 py-3.5 text-sm font-medium text-gray-900">
+                      {activity.title}
+                    </td>
+                    <td className="px-6 py-3.5 text-sm text-gray-600">
+                      {activity.organization}
+                    </td>
+                    <td className="px-6 py-3.5 text-right text-sm font-semibold text-gray-900">
+                      ¥{activity.amount.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${style.bg} ${style.text}`}
+                      >
+                        <Icon className="h-3 w-3" />
+                        {activity.statusLabel}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3.5 text-sm text-gray-500">
+                      {activity.date}
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <Link
+                        href={`/requests/${activity.id}`}
+                        className="inline-flex items-center gap-1 text-xs text-blue-600 opacity-0 transition-opacity group-hover:opacity-100"
+                      >
+                        詳細
+                        <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
