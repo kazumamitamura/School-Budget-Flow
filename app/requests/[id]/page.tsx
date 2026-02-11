@@ -12,6 +12,9 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  Users,
+  Paperclip,
+  ExternalLink,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -49,6 +52,7 @@ export default async function RequestDetailPage({
     .select(
       `
       id, title, amount, reason, status, created_at, updated_at,
+      organization, attachment_url,
       budget_profiles!budget_requests_user_id_fkey ( full_name, department, role ),
       budget_funds!budget_requests_fund_id_fkey ( name, year, total_amount )
     `
@@ -125,6 +129,14 @@ export default async function RequestDetailPage({
               </h1>
 
               <div className="grid gap-4 sm:grid-cols-2">
+                {/* 申請団体名 */}
+                {request.organization && (
+                  <InfoRow
+                    icon={<Users className="h-4 w-4" />}
+                    label="申請団体"
+                    value={request.organization}
+                  />
+                )}
                 <InfoRow
                   icon={<Coins className="h-4 w-4" />}
                   label="申請金額"
@@ -169,6 +181,36 @@ export default async function RequestDetailPage({
                 {request.reason || "（理由の記載なし）"}
               </p>
             </div>
+
+            {/* 添付ファイル */}
+            {request.attachment_url && (
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <Paperclip className="h-4 w-4 text-gray-400" />
+                  添付ファイル
+                </h2>
+                <a
+                  href={request.attachment_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  添付ファイルを開く
+                </a>
+                {/* 画像プレビュー */}
+                {request.attachment_url.match(/\.(jpg|jpeg|png|gif|webp)(\?|$)/i) && (
+                  <div className="mt-4 overflow-hidden rounded-xl border border-gray-200">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={request.attachment_url}
+                      alt="添付ファイルプレビュー"
+                      className="max-h-80 w-full object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ━━━ 承認タイムライン ━━━ */}
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
