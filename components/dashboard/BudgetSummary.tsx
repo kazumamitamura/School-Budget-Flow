@@ -2,14 +2,17 @@
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
-// ダミーデータ
-const budgetData = [
-  { name: "使用済み", value: 350000, color: "#3b82f6" },
-  { name: "申請中", value: 50000, color: "#f59e0b" },
-  { name: "残高", value: 600000, color: "#e5e7eb" },
-];
-
-const TOTAL = 1000000;
+/**
+ * 予算サマリーに渡すデータ
+ * - used:     ステータスが completed のもの（支出確定）
+ * - pending:  completed / rejected 以外の全て（申請中 + 承認中 + 準備中）
+ * - total:    予算総額
+ */
+export interface BudgetSummaryData {
+  total: number;
+  used: number;
+  pending: number;
+}
 
 function formatYen(amount: number): string {
   return `¥${amount.toLocaleString()}`;
@@ -34,11 +37,26 @@ function CustomTooltip({
   );
 }
 
-export default function BudgetSummary() {
-  const usedAmount = budgetData[0].value;
-  const pendingAmount = budgetData[1].value;
-  const remaining = budgetData[2].value;
-  const usageRate = Math.round(((usedAmount + pendingAmount) / TOTAL) * 100);
+export default function BudgetSummary({
+  data,
+}: {
+  data?: BudgetSummaryData;
+}) {
+  // props が無い場合はダミーデータにフォールバック
+  const total = data?.total ?? 1000000;
+  const usedAmount = data?.used ?? 350000;
+  const pendingAmount = data?.pending ?? 50000;
+  const remaining = Math.max(0, total - usedAmount - pendingAmount);
+  const usageRate =
+    total > 0
+      ? Math.round(((usedAmount + pendingAmount) / total) * 100)
+      : 0;
+
+  const budgetData = [
+    { name: "使用済み（出納済）", value: usedAmount, color: "#3b82f6" },
+    { name: "申請中・確保済み", value: pendingAmount, color: "#f59e0b" },
+    { name: "残高", value: remaining, color: "#e5e7eb" },
+  ];
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -46,7 +64,7 @@ export default function BudgetSummary() {
         全校予算（令和6年度）
       </h2>
       <p className="mb-6 text-2xl font-bold text-gray-900">
-        {formatYen(TOTAL)}
+        {formatYen(total)}
       </p>
 
       <div className="flex flex-col items-center gap-6 sm:flex-row">
@@ -84,21 +102,27 @@ export default function BudgetSummary() {
         <div className="flex w-full flex-col gap-4">
           <SummaryRow
             color="bg-blue-500"
-            label="使用済み"
+            label="使用済み（出納済）"
             amount={usedAmount}
-            percentage={Math.round((usedAmount / TOTAL) * 100)}
+            percentage={
+              total > 0 ? Math.round((usedAmount / total) * 100) : 0
+            }
           />
           <SummaryRow
             color="bg-amber-400"
-            label="申請中"
+            label="申請中・確保済み"
             amount={pendingAmount}
-            percentage={Math.round((pendingAmount / TOTAL) * 100)}
+            percentage={
+              total > 0 ? Math.round((pendingAmount / total) * 100) : 0
+            }
           />
           <SummaryRow
             color="bg-gray-200"
             label="残高"
             amount={remaining}
-            percentage={Math.round((remaining / TOTAL) * 100)}
+            percentage={
+              total > 0 ? Math.round((remaining / total) * 100) : 0
+            }
           />
         </div>
       </div>

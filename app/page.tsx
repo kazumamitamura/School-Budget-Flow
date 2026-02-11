@@ -7,6 +7,7 @@ import {
   Users,
   FileText,
   LogOut,
+  ClipboardList,
 } from "lucide-react";
 import Link from "next/link";
 import BudgetSummary from "@/components/dashboard/BudgetSummary";
@@ -65,13 +66,22 @@ export default function DashboardPage() {
               令和6年度 ・ 生徒会予算の状況
             </p>
           </div>
-          <Link
-            href="/requests/new"
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            <Plus className="h-4 w-4" />
-            新規申請
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/office"
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+            >
+              <ClipboardList className="h-4 w-4" />
+              事務室
+            </Link>
+            <Link
+              href="/requests/new"
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              <Plus className="h-4 w-4" />
+              新規申請
+            </Link>
+          </div>
         </div>
 
         {/* ─── KPIカード群 ─── */}
