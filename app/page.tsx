@@ -12,6 +12,7 @@ import Link from "next/link";
 import BudgetSummary from "@/components/dashboard/BudgetSummary";
 import StatusCard from "@/components/dashboard/StatusCard";
 import RecentActivity from "@/components/dashboard/RecentActivity";
+import RoleSwitcher from "@/components/dev/RoleSwitcher";
 
 export default function DashboardPage() {
   return (
@@ -29,6 +30,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <RoleSwitcher />
             {/* 通知 */}
             <button className="relative rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700">
               <Bell className="h-5 w-5" />

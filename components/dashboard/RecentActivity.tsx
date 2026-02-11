@@ -4,11 +4,19 @@ import {
   XCircle,
   FileEdit,
   Banknote,
+  ExternalLink,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 
 type RequestStatus =
   | "draft"
+  | "pending_teacher"
+  | "pending_kyoto"
+  | "pending_vice_principal"
+  | "pending_principal"
+  | "pending_office"
+  | "pending_chairman"
   | "pending"
   | "approved"
   | "ready_for_payment"
@@ -32,8 +40,8 @@ const activities: Activity[] = [
     title: "文化祭備品購入",
     department: "生徒会",
     amount: 45000,
-    status: "pending",
-    statusLabel: "教頭承認待ち",
+    status: "pending_kyoto",
+    statusLabel: "教頭 承認待ち",
     date: "2024-11-18",
   },
   {
@@ -83,29 +91,39 @@ const activities: Activity[] = [
   },
 ];
 
-const statusStyles: Record<
-  RequestStatus,
-  { bg: string; text: string; icon: LucideIcon }
-> = {
-  draft: { bg: "bg-gray-100", text: "text-gray-600", icon: FileEdit },
-  pending: { bg: "bg-amber-100", text: "text-amber-700", icon: Clock },
-  approved: {
-    bg: "bg-emerald-100",
-    text: "text-emerald-700",
-    icon: CheckCircle2,
-  },
-  ready_for_payment: {
-    bg: "bg-blue-100",
-    text: "text-blue-700",
-    icon: Banknote,
-  },
-  completed: {
-    bg: "bg-emerald-100",
-    text: "text-emerald-700",
-    icon: CheckCircle2,
-  },
-  rejected: { bg: "bg-red-100", text: "text-red-700", icon: XCircle },
-};
+function getStatusStyle(status: RequestStatus): {
+  bg: string;
+  text: string;
+  icon: LucideIcon;
+} {
+  if (status.startsWith("pending")) {
+    return { bg: "bg-amber-100", text: "text-amber-700", icon: Clock };
+  }
+  const map: Partial<
+    Record<RequestStatus, { bg: string; text: string; icon: LucideIcon }>
+  > = {
+    draft: { bg: "bg-gray-100", text: "text-gray-600", icon: FileEdit },
+    approved: {
+      bg: "bg-emerald-100",
+      text: "text-emerald-700",
+      icon: CheckCircle2,
+    },
+    ready_for_payment: {
+      bg: "bg-blue-100",
+      text: "text-blue-700",
+      icon: Banknote,
+    },
+    completed: {
+      bg: "bg-emerald-100",
+      text: "text-emerald-700",
+      icon: CheckCircle2,
+    },
+    rejected: { bg: "bg-red-100", text: "text-red-700", icon: XCircle },
+  };
+  return (
+    map[status] ?? { bg: "bg-gray-100", text: "text-gray-600", icon: FileEdit }
+  );
+}
 
 export default function RecentActivity() {
   return (
@@ -120,10 +138,14 @@ export default function RecentActivity() {
       {/* モバイル: カードレイアウト */}
       <div className="divide-y divide-gray-100 sm:hidden">
         {activities.map((activity) => {
-          const style = statusStyles[activity.status];
+          const style = getStatusStyle(activity.status);
           const Icon = style.icon;
           return (
-            <div key={activity.id} className="px-6 py-4">
+            <Link
+              key={activity.id}
+              href={`/requests/${activity.id}`}
+              className="block px-6 py-4 transition-colors hover:bg-gray-50/50"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-gray-900">
@@ -146,7 +168,7 @@ export default function RecentActivity() {
                   {activity.statusLabel}
                 </span>
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>
@@ -162,16 +184,17 @@ export default function RecentActivity() {
               <th className="px-6 py-3 text-right font-medium">金額</th>
               <th className="px-6 py-3 font-medium">ステータス</th>
               <th className="px-6 py-3 font-medium">日付</th>
+              <th className="px-6 py-3 font-medium" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {activities.map((activity) => {
-              const style = statusStyles[activity.status];
+              const style = getStatusStyle(activity.status);
               const Icon = style.icon;
               return (
                 <tr
                   key={activity.id}
-                  className="transition-colors hover:bg-gray-50/50"
+                  className="group transition-colors hover:bg-gray-50/50"
                 >
                   <td className="px-6 py-3.5 text-xs text-gray-400">
                     {activity.id}
@@ -195,6 +218,15 @@ export default function RecentActivity() {
                   </td>
                   <td className="px-6 py-3.5 text-sm text-gray-500">
                     {activity.date}
+                  </td>
+                  <td className="px-6 py-3.5">
+                    <Link
+                      href={`/requests/${activity.id}`}
+                      className="inline-flex items-center gap-1 text-xs text-blue-600 opacity-0 transition-opacity group-hover:opacity-100"
+                    >
+                      詳細
+                      <ExternalLink className="h-3 w-3" />
+                    </Link>
                   </td>
                 </tr>
               );

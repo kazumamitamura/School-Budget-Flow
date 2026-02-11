@@ -62,7 +62,7 @@ export async function submitRequest(
     title: title!.trim(),
     amount: Math.floor(amount),
     reason: reason!.trim(),
-    status: "pending",
+    status: "pending_teacher",
   });
 
   if (error) {
