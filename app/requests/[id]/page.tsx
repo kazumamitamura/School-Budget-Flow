@@ -15,7 +15,10 @@ import {
   Users,
   Paperclip,
   ExternalLink,
+  Building2,
+  ShoppingCart,
 } from "lucide-react";
+import type { LineItem } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 import {
   APPROVAL_FLOW,
@@ -52,7 +55,7 @@ export default async function RequestDetailPage({
     .select(
       `
       id, title, amount, reason, status, created_at, updated_at,
-      organization, attachment_url,
+      organization, payee, line_items, attachment_url,
       budget_profiles!budget_requests_user_id_fkey ( full_name, department, role ),
       budget_funds!budget_requests_fund_id_fkey ( name, year, total_amount )
     `
@@ -143,6 +146,13 @@ export default async function RequestDetailPage({
                   value={`¥${request.amount.toLocaleString()}`}
                   highlight
                 />
+                {request.payee && (
+                  <InfoRow
+                    icon={<Building2 className="h-4 w-4" />}
+                    label="支払先"
+                    value={request.payee}
+                  />
+                )}
                 <InfoRow
                   icon={<FolderOpen className="h-4 w-4" />}
                   label="予算科目"
@@ -181,6 +191,67 @@ export default async function RequestDetailPage({
                 {request.reason || "（理由の記載なし）"}
               </p>
             </div>
+
+            {/* ━━━ 品目明細テーブル ━━━ */}
+            {request.line_items &&
+              Array.isArray(request.line_items) &&
+              (request.line_items as LineItem[]).length > 0 && (
+                <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                  <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-900">
+                    <ShoppingCart className="h-4 w-4 text-gray-400" />
+                    品目明細
+                  </h2>
+                  <div className="overflow-x-auto rounded-lg border border-gray-200">
+                    <table className="w-full min-w-[480px]">
+                      <thead>
+                        <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium text-gray-500">
+                          <th className="px-4 py-2.5 text-left">品目・品名</th>
+                          <th className="px-4 py-2.5 text-right">数量</th>
+                          <th className="px-4 py-2.5 text-right">
+                            単価（円）
+                          </th>
+                          <th className="px-4 py-2.5 text-right">
+                            金額（円）
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {(request.line_items as LineItem[]).map(
+                          (item, idx) => (
+                            <tr key={idx}>
+                              <td className="px-4 py-3 text-sm text-gray-900">
+                                {item.name}
+                              </td>
+                              <td className="px-4 py-3 text-right text-sm text-gray-700">
+                                {item.quantity}
+                              </td>
+                              <td className="px-4 py-3 text-right text-sm text-gray-700">
+                                ¥{item.unit_price.toLocaleString()}
+                              </td>
+                              <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
+                                ¥{item.amount.toLocaleString()}
+                              </td>
+                            </tr>
+                          )
+                        )}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t-2 border-gray-300 bg-blue-50/50">
+                          <td
+                            colSpan={3}
+                            className="px-4 py-3 text-right text-sm font-semibold text-gray-700"
+                          >
+                            合計
+                          </td>
+                          <td className="px-4 py-3 text-right text-base font-bold text-blue-600">
+                            ¥{request.amount.toLocaleString()}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              )}
 
             {/* 添付ファイル */}
             {request.attachment_url && (
