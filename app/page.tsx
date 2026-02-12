@@ -6,21 +6,21 @@ import {
   TrendingUp,
   Users,
   FileText,
-  LogOut,
   ClipboardList,
   CheckCircle2,
   Building2,
 } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import BudgetSummary from "@/components/dashboard/BudgetSummary";
 import StatusCard from "@/components/dashboard/StatusCard";
 import RecentActivity, {
   type ActivityItem,
 } from "@/components/dashboard/RecentActivity";
-import RoleSwitcher from "@/components/dev/RoleSwitcher";
+import Header from "@/components/Header";
 import DepartmentFilter from "@/components/dashboard/DepartmentFilter";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { STATUS_LABELS } from "@/lib/workflow";
 
@@ -32,15 +32,19 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const user = await getCurrentUser();
 
+  if (!user) {
+    redirect("/login");
+  }
+
+  const supabase = await createClient();
+
   // ── フィルター対象の department を決定 ──
-  // 管理者: URLパラメータ ?dept=xxx で切り替え可。空なら全体。
-  // 一般ユーザー: 自分の department 固定。
   let filterDept: string | null = null;
   if (user.isAdmin) {
     const deptParam = typeof params.dept === "string" ? params.dept : "";
-    filterDept = deptParam || null; // 空文字列 → null(全体)
+    filterDept = deptParam || null;
   } else {
-    filterDept = user.department; // 一般ユーザーは自分の所属固定
+    filterDept = user.department;
   }
 
   // ── 予算科目 (budget_funds) の取得 ──
@@ -81,17 +85,14 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   // ── KPI 集計 ──
   const allRequests = requests ?? [];
 
-  // 使用済み（completed）
   const usedAmount = allRequests
     .filter((r) => r.status === "completed")
     .reduce((sum, r) => sum + r.amount, 0);
 
-  // 申請中・確保済み（completed/rejected 以外）
   const pendingAmount = allRequests
     .filter((r) => r.status !== "completed" && r.status !== "rejected")
     .reduce((sum, r) => sum + r.amount, 0);
 
-  // 承認待ち件数（pending_* のもの）
   const pendingCount = allRequests.filter((r) =>
     (r.status as string).startsWith("pending")
   ).length;
@@ -99,15 +100,11 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     .filter((r) => (r.status as string).startsWith("pending"))
     .reduce((sum, r) => sum + r.amount, 0);
 
-  // 予算総額
-  // フィルターされている場合は関連する fund のみ集計したいが、
-  // fund と department の紐付けが不明確なため、全 fund 合計を使用
   const totalBudget = (funds ?? []).reduce((s, f) => s + f.total_amount, 0);
   const remaining = Math.max(0, totalBudget - usedAmount - pendingAmount);
   const remainingPct =
     totalBudget > 0 ? Math.round((remaining / totalBudget) * 100) : 0;
 
-  // 今月の支出（completed で今月分）
   const now = new Date();
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthlySpent = allRequests
@@ -132,52 +129,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   // ── 表示ラベル ──
   const scopeLabel = filterDept ? `${filterDept}` : "学校全体";
   const budgetLabel = filterDept
-    ? `${filterDept} 予算（令和6年度）`
-    : "全校予算（令和6年度）";
+    ? `${filterDept} 予算（令和7年度）`
+    : "全校予算（令和7年度）";
 
   return (
     <div className="min-h-screen bg-gray-50/50">
       {/* ─── ヘッダー ─── */}
-      <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white">
-              <Wallet className="h-4.5 w-4.5" />
-            </div>
-            <span className="text-base font-bold tracking-tight text-gray-900">
-              School Budget Flow
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <RoleSwitcher />
-            {/* 通知 */}
-            <button className="relative rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700">
-              <Bell className="h-5 w-5" />
-              {pendingCount > 0 && (
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
-              )}
-            </button>
-            {/* ユーザー情報 */}
-            <div className="hidden items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 sm:flex">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-600">
-                {user.department.charAt(0)}
-              </div>
-              <div className="text-left">
-                <p className="text-xs font-medium text-gray-900">
-                  {user.department}
-                </p>
-                <p className="text-[10px] text-gray-500">
-                  {user.isAdmin ? "管理者" : "一般"}
-                </p>
-              </div>
-            </div>
-            <button className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
-              <LogOut className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* ─── メインコンテンツ ─── */}
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
@@ -190,7 +148,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             <div className="mt-0.5 flex items-center gap-2 text-sm text-gray-500">
               <Building2 className="h-3.5 w-3.5" />
               <span>
-                令和6年度 ・ {scopeLabel}
+                令和7年度 ・ {scopeLabel}
                 {!user.isAdmin && "の予算状況"}
               </span>
             </div>
@@ -332,7 +290,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           <RecentActivity activities={activityItems} />
         </div>
 
-        {/* ─── 承認フロー図（mockデータの場合のみ表示） ─── */}
+        {/* ─── 承認フロー図 ─── */}
         {allRequests.length > 0 &&
           allRequests.some((r) =>
             (r.status as string).startsWith("pending")
@@ -388,7 +346,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           </p>
           <div className="flex items-center gap-1 text-xs text-gray-400">
             <Users className="h-3.5 w-3.5" />
-            <span>オンライン: 12人</span>
+            <span>ログイン中: {user.fullName}</span>
           </div>
         </div>
       </footer>

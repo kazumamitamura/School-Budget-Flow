@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
-  Wallet,
   ArrowLeft,
   ClipboardList,
   Banknote,
@@ -10,9 +8,10 @@ import {
   AlertTriangle,
   ExternalLink,
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 import { STATUS_LABELS } from "@/lib/workflow";
-import RoleSwitcher from "@/components/dev/RoleSwitcher";
+import Header from "@/components/Header";
 import {
   ReadyForPaymentButton,
   CompletedButton,
@@ -34,14 +33,19 @@ interface RequestRow {
 }
 
 export default async function OfficePage() {
-  // ── 権限チェック（DEV Cookie） ──
-  const cookieStore = await cookies();
-  const currentRole = cookieStore.get("dev_role")?.value ?? "student";
-  const hasAccess = ["accounting", "office_chief"].includes(currentRole);
+  const user = await getCurrentUser();
 
+  if (!user) {
+    redirect("/login");
+  }
+
+  // ── 権限チェック（実ユーザーの role を使用） ──
+  const hasAccess = ["accounting", "office_chief"].includes(user.role);
   if (!hasAccess) {
     redirect("/?error=unauthorized");
   }
+
+  const supabase = await createClient();
 
   // ── 承認済み（準備待ち）案件を取得 ──
   const { data: approvedRequests } = await supabase
@@ -75,19 +79,7 @@ export default async function OfficePage() {
   return (
     <div className="min-h-screen bg-gray-50/50">
       {/* ─── ヘッダー ─── */}
-      <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white">
-              <Wallet className="h-4.5 w-4.5" />
-            </div>
-            <span className="text-base font-bold tracking-tight text-gray-900">
-              School Budget Flow
-            </span>
-          </Link>
-          <RoleSwitcher />
-        </div>
-      </header>
+      <Header />
 
       <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         {/* 戻るリンク */}
@@ -155,9 +147,7 @@ export default async function OfficePage() {
           </div>
         </div>
 
-        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            A. 準備待ちリスト (approved)
-           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        {/* A. 準備待ちリスト */}
         <section className="mb-8">
           <div className="mb-3 flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100">
@@ -186,9 +176,7 @@ export default async function OfficePage() {
           )}
         </section>
 
-        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            B. 受取待ちリスト (ready_for_payment)
-           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        {/* B. 受取待ちリスト */}
         <section>
           <div className="mb-3 flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100">

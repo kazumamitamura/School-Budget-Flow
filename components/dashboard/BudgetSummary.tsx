@@ -64,7 +64,7 @@ export default function BudgetSummary({
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
       <h2 className="mb-1 text-sm font-medium text-gray-500">
-        {label ?? "全校予算（令和6年度）"}
+        {label ?? "全校予算（令和7年度）"}
       </h2>
       <p className="mb-6 text-2xl font-bold text-gray-900">
         {formatYen(total)}

@@ -1,8 +1,6 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { cookies } from "next/headers";
 import {
-  Wallet,
   ArrowLeft,
   Calendar,
   Coins,
@@ -19,7 +17,8 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import type { LineItem } from "@/lib/types";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 import {
   APPROVAL_FLOW,
   getCompletedStepIndex,
@@ -27,7 +26,7 @@ import {
   ROLE_LABELS,
   STATUS_LABELS,
 } from "@/lib/workflow";
-import RoleSwitcher from "@/components/dev/RoleSwitcher";
+import Header from "@/components/Header";
 import ApprovalPanel from "@/components/requests/ApprovalPanel";
 
 export const metadata = {
@@ -48,6 +47,13 @@ export default async function RequestDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const supabase = await createClient();
 
   // ── 申請データ取得 ──
   const { data: request, error } = await supabase
@@ -74,9 +80,8 @@ export default async function RequestDetailPage({
     .eq("request_id", id)
     .order("approved_at", { ascending: true });
 
-  // ── DevTool: Cookie から現在の役職を取得 ──
-  const cookieStore = await cookies();
-  const currentRole = cookieStore.get("dev_role")?.value ?? "student";
+  // ── 現在のユーザーの役職で承認可否を判定 ──
+  const currentRole = user.role;
   const requiredRole = getRequiredRole(request.status);
   const canApprove = requiredRole !== null && currentRole === requiredRole;
   const isRejected = request.status === "rejected";
@@ -93,19 +98,7 @@ export default async function RequestDetailPage({
   return (
     <div className="min-h-screen bg-gray-50/50">
       {/* ─── ヘッダー ─── */}
-      <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white">
-              <Wallet className="h-4.5 w-4.5" />
-            </div>
-            <span className="text-base font-bold tracking-tight text-gray-900">
-              School Budget Flow
-            </span>
-          </Link>
-          <RoleSwitcher />
-        </div>
-      </header>
+      <Header />
 
       <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         {/* 戻るリンク */}
@@ -132,7 +125,6 @@ export default async function RequestDetailPage({
               </h1>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                {/* 申請団体名 */}
                 {request.organization && (
                   <InfoRow
                     icon={<Users className="h-4 w-4" />}
@@ -269,7 +261,6 @@ export default async function RequestDetailPage({
                   <ExternalLink className="h-4 w-4" />
                   添付ファイルを開く
                 </a>
-                {/* 画像プレビュー */}
                 {request.attachment_url.match(/\.(jpg|jpeg|png|gif|webp)(\?|$)/i) && (
                   <div className="mt-4 overflow-hidden rounded-xl border border-gray-200">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -289,7 +280,6 @@ export default async function RequestDetailPage({
                 承認フロー
               </h2>
               <div className="space-y-0">
-                {/* 申請者ステップ (常にdone) */}
                 <TimelineStep
                   label="申請者"
                   sublabel={
@@ -304,9 +294,7 @@ export default async function RequestDetailPage({
                   isFirst
                 />
 
-                {/* 各承認ステップ */}
                 {APPROVAL_FLOW.map((step, idx) => {
-                  // 却下された場合の処理
                   const rejectedAtThisStep =
                     isRejected &&
                     (approvals as Approval[] | null)?.some(
@@ -366,7 +354,6 @@ export default async function RequestDetailPage({
                   );
                 })}
 
-                {/* 全承認完了ステップ */}
                 {(isTerminal ||
                   completedIdx === APPROVAL_FLOW.length) && (
                   <TimelineStep
@@ -558,7 +545,6 @@ function TimelineStep({
 
   return (
     <div className="flex gap-4">
-      {/* 縦ライン + ドット */}
       <div className="flex flex-col items-center">
         {!isFirst && <div className={`h-4 w-0.5 ${lineClass}`} />}
         <div
@@ -569,7 +555,6 @@ function TimelineStep({
         {!isLast && <div className={`h-full min-h-4 w-0.5 ${lineClass}`} />}
       </div>
 
-      {/* テキスト */}
       <div className={`pb-5 ${isLast ? "pb-0" : ""}`}>
         <p
           className={`text-sm font-semibold ${

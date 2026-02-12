@@ -1,6 +1,9 @@
-import { Wallet, FilePlus } from "lucide-react";
+import { FilePlus } from "lucide-react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
+import Header from "@/components/Header";
 import RequestForm from "@/components/requests/RequestForm";
 import type { FundWithBalance } from "@/components/requests/RequestForm";
 
@@ -9,6 +12,14 @@ export const metadata = {
 };
 
 export default async function NewRequestPage() {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const supabase = await createClient();
+
   // ── budget_funds テーブルから予算科目を取得 ──
   const { data: funds, error: fundsError } = await supabase
     .from("budget_funds")
@@ -20,7 +31,6 @@ export default async function NewRequestPage() {
   }
 
   // ── 各予算科目の使用済み・確保済み金額を集計 ──
-  // rejected 以外の全申請の金額合計を fund_id ごとに取得
   const { data: usageData, error: usageError } = await supabase
     .from("budget_requests")
     .select("fund_id, amount, status")
@@ -30,7 +40,6 @@ export default async function NewRequestPage() {
     console.error("budget_requests usage fetch error:", usageError);
   }
 
-  // fund_id ごとに消費金額を合算
   const usageByFund: Record<string, number> = {};
   if (usageData) {
     for (const row of usageData) {
@@ -39,7 +48,6 @@ export default async function NewRequestPage() {
     }
   }
 
-  // 残額を計算して FundWithBalance 型に変換
   const fundsWithBalance: FundWithBalance[] = (funds ?? []).map((fund) => ({
     id: fund.id,
     name: fund.name,
@@ -51,18 +59,7 @@ export default async function NewRequestPage() {
   return (
     <div className="min-h-screen bg-gray-50/50">
       {/* ─── ヘッダー ─── */}
-      <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3 sm:px-6">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white">
-              <Wallet className="h-4.5 w-4.5" />
-            </div>
-            <span className="text-base font-bold tracking-tight text-gray-900">
-              School Budget Flow
-            </span>
-          </Link>
-        </div>
-      </header>
+      <Header />
 
       {/* ─── メインコンテンツ ─── */}
       <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">

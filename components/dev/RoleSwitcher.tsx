@@ -16,20 +16,41 @@ const ROLES = [
   "accounting",
 ] as const;
 
-/** デモ用の所属リスト */
+/** デモ用の所属リスト（R7年度 部活動 + 管理系） */
 const DEPARTMENTS = [
-  "生徒会",
-  "野球部",
-  "サッカー部",
-  "バスケ部",
+  // ── 運動部 ──
+  "男子柔道部",
+  "女子柔道部",
+  "硬式野球部",
+  "ウエイトリフティング部",
+  "男子バレーボール部",
+  "女子バレーボール部",
+  "男子サッカー部",
+  "男子ソフトテニス部",
+  "女子ソフトテニス部",
+  "男子バスケットボール部",
+  "女子バスケットボール部",
+  "バドミントン部",
+  "卓球部",
+  "ソフトボール部",
+  "軟式野球部",
+  "チアリーディング部",
+  // ── 文化部 ──
+  "吹奏楽部",
   "美術部",
-  "放送部",
-  "図書委員会",
-  "理科",
-  "体育科",
+  "茶道部",
+  "インターアクト部",
+  "スーパーバイオ部",
+  "書道部",
+  "英会話部",
+  "合唱部",
+  "アナウンス部",
+  "競技かるた部",
+  "自動車部",
+  "ロボット部",
+  // ── 管理系 ──
+  "生徒会",
   "事務室",
-  "3年1組",
-  "3年2組",
 ] as const;
 
 function getCookie(name: string): string | null {
@@ -45,7 +66,7 @@ function setCookie(name: string, value: string, days = 30) {
 
 export default function RoleSwitcher() {
   const [role, setRole] = useState<string>("student");
-  const [department, setDepartment] = useState<string>("生徒会");
+  const [department, setDepartment] = useState<string>("硬式野球部");
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 

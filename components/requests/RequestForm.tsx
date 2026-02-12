@@ -163,7 +163,7 @@ export default function RequestForm({ funds }: { funds: FundWithBalance[] }) {
               type="text"
               id="title"
               name="title"
-              placeholder="例: 令和6年度生徒会配当金として"
+              placeholder="例: 令和7年度生徒会配当金として"
               className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:ring-2 focus:ring-offset-1 ${
                 state.fieldErrors?.title
                   ? "border-red-300 focus:border-red-500 focus:ring-red-200"

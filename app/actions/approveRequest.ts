@@ -1,14 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 import { getNextStatus, getRequiredRole } from "@/lib/workflow";
-
-// ──────────────────────────────────────────────
-// 仮のユーザーID（認証実装後は auth.uid() に差し替え）
-// ──────────────────────────────────────────────
-const TEMP_APPROVER_ID = "00000000-0000-0000-0000-000000000001";
 
 export type ApproveRequestState = {
   success: boolean;
@@ -32,9 +27,14 @@ export async function approveRequest(
     return { success: false, error: "必要なパラメータが不足しています。" };
   }
 
-  // ── DevTool の Cookie から現在の役職を取得 ──
-  const cookieStore = await cookies();
-  const currentRole = cookieStore.get("dev_role")?.value ?? "student";
+  // ── 認証チェック: 実際のユーザーの role を使用 ──
+  const user = await getCurrentUser();
+  if (!user) {
+    return { success: false, error: "ログインが必要です。" };
+  }
+
+  const currentRole = user.role;
+  const supabase = await createClient();
 
   // ── 申請データを取得 ──
   const { data: request, error: fetchError } = await supabase
@@ -88,12 +88,12 @@ export async function approveRequest(
     };
   }
 
-  // ── 承認履歴を INSERT ──
+  // ── 承認履歴を INSERT（実際のユーザーIDを使用）──
   const { error: approvalError } = await supabase
     .from("budget_approvals")
     .insert({
       request_id: requestId,
-      approver_id: TEMP_APPROVER_ID,
+      approver_id: user.id,
       approver_role: currentRole,
       status: action,
       comment: comment.trim(),
@@ -101,7 +101,6 @@ export async function approveRequest(
 
   if (approvalError) {
     console.error("budget_approvals INSERT error:", approvalError);
-    // 履歴の保存失敗はステータス更新が成功しているので警告のみ
     return {
       success: true,
       error: "承認は完了しましたが、履歴の保存に失敗しました。",

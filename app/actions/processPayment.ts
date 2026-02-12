@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 import { sendNotificationEmail } from "@/lib/mail";
 
 export type ProcessPaymentState = {
@@ -21,6 +21,8 @@ export async function markReadyForPayment(
   if (!requestId) {
     return { success: false, error: "申請IDが指定されていません。" };
   }
+
+  const supabase = await createClient();
 
   // ── 申請データ + 申請者情報を取得 ──
   const { data: request, error: fetchError } = await supabase
@@ -89,6 +91,8 @@ export async function markCompleted(
     return { success: false, error: "申請IDが指定されていません。" };
   }
 
+  const supabase = await createClient();
+
   // ── 申請データを取得 ──
   const { data: request, error: fetchError } = await supabase
     .from("budget_requests")
@@ -121,7 +125,7 @@ export async function markCompleted(
   }
 
   console.log(
-    `✅ 出納完了: 「${request.title}」(${requestId}) が completed に更新されました。`
+    `出納完了: 「${request.title}」(${requestId}) が completed に更新されました。`
   );
 
   revalidatePath("/office");

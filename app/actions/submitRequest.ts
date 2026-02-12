@@ -1,15 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 import type { LineItem } from "@/lib/types";
-
-// ──────────────────────────────────────────────
-// 仮の固定ユーザーID（認証機能が完成するまでの暫定値）
-// Supabase の budget_profiles にこのIDのレコードが必要です。
-// 認証実装後は auth.uid() から取得するように差し替えてください。
-// ──────────────────────────────────────────────
-const TEMP_USER_ID = "00000000-0000-0000-0000-000000000001";
 
 export type SubmitRequestState = {
   success: boolean;
@@ -30,6 +24,14 @@ export async function submitRequest(
   _prevState: SubmitRequestState,
   formData: FormData
 ): Promise<SubmitRequestState> {
+  // ── 認証チェック ──
+  const user = await getCurrentUser();
+  if (!user) {
+    return { success: false, error: "ログインが必要です。" };
+  }
+
+  const supabase = await createClient();
+
   // ── フォームデータ取得 ──
   const organization = formData.get("organization") as string | null;
   const title = formData.get("title") as string | null;
@@ -71,7 +73,6 @@ export async function submitRequest(
     fieldErrors.line_items = "品目データの形式が不正です。";
   }
 
-  // 有効な行のみ抽出（品目名が入力されているもの）
   const validItems = lineItems.filter(
     (item) => item.name && item.name.trim().length > 0
   );
@@ -80,7 +81,6 @@ export async function submitRequest(
     fieldErrors.line_items = "最低1つ以上の品目を入力してください。";
   }
 
-  // 各品目の数量・単価チェック
   for (let i = 0; i < validItems.length; i++) {
     const item = validItems[i];
     if (item.quantity <= 0 || item.unit_price <= 0) {
@@ -99,7 +99,7 @@ export async function submitRequest(
     fieldErrors.amount = "合計金額が0円です。品目の数量と単価を入力してください。";
   }
 
-  // ファイルバリデーション（任意項目）
+  // ファイルバリデーション
   const allowedTypes = [
     "image/jpeg",
     "image/png",
@@ -122,7 +122,7 @@ export async function submitRequest(
     return { success: false, fieldErrors };
   }
 
-  // ── 品目データを正規化（amount を再計算してセット）──
+  // ── 品目データを正規化 ──
   const normalizedItems: LineItem[] = validItems.map((item) => ({
     name: item.name.trim(),
     quantity: item.quantity,
@@ -161,9 +161,9 @@ export async function submitRequest(
     attachmentUrl = publicUrl;
   }
 
-  // ── Supabase に INSERT ──
+  // ── Supabase に INSERT（実際のユーザーIDを使用）──
   const { error } = await supabase.from("budget_requests").insert({
-    user_id: TEMP_USER_ID,
+    user_id: user.id,
     fund_id: fundId!.trim(),
     title: title!.trim(),
     amount: calculatedTotal,
@@ -183,12 +183,10 @@ export async function submitRequest(
     };
   }
 
-  // ── 品目カテゴリマスタに蓄積（将来の学習・効率化用） ──
-  // 非同期で実行し、エラーがあってもメインの処理には影響させない
+  // ── 品目カテゴリマスタに蓄積 ──
   const currentYear = new Date().getFullYear();
   try {
     for (const item of normalizedItems) {
-      // 既存の同名品目がある場合は use_count を更新、なければ新規作成
       const { data: existing } = await supabase
         .from("budget_item_categories")
         .select("id, use_count")
@@ -215,7 +213,6 @@ export async function submitRequest(
       }
     }
   } catch (catError) {
-    // カテゴリマスタの更新失敗はログのみ（メイン処理には影響させない）
     console.warn("budget_item_categories update warning:", catError);
   }
 
